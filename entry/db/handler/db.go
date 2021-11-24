@@ -4,21 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/lavaxx/services/entry/db/db_pb"
-	"github.com/pubgo/lava/clients/orm"
-	"github.com/pubgo/xerror"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/micro/micro/v3/service/errors"
-	"github.com/micro/micro/v3/service/logger"
 	"github.com/micro/services/pkg/tenant"
 	cache "github.com/patrickmn/go-cache"
+	"github.com/pubgo/lava/clients/orm"
+	"github.com/pubgo/lava/errors"
+	"github.com/pubgo/lava/logger"
+	"github.com/pubgo/xerror"
 	"google.golang.org/protobuf/types/known/structpb"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/lavaxx/services/entry/db/db_pb"
 )
 
 const idKey = "id"
@@ -95,6 +96,7 @@ func (e *Db) tableName(ctx context.Context, t string) (string, error) {
 
 // Call is a single request handler called via client.Call or the generated client code
 func (e *Db) Create(ctx context.Context, req *db_pb.CreateRequest, rsp *db_pb.CreateResponse) error {
+	var log = logger.GetLog(ctx)
 	if len(req.Record.AsMap()) == 0 {
 		return errors.BadRequest("db.create", "missing record")
 	}
@@ -103,15 +105,12 @@ func (e *Db) Create(ctx context.Context, req *db_pb.CreateRequest, rsp *db_pb.Cr
 	if err != nil {
 		return err
 	}
-	logger.Infof("Inserting into table '%v'", tableName)
+	log.Sugar().Infof("Inserting into table '%v'", tableName)
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 	_, ok := c.Get(tableName)
 	if !ok {
-		logger.Infof("Creating table '%v'", tableName)
+		log.Sugar().Infof("Creating table '%v'", tableName)
 		db.Exec(fmt.Sprintf(stmt, tableName, tableName, tableName))
 		c.Set(tableName, true, 0)
 	}
@@ -137,6 +136,8 @@ func (e *Db) Create(ctx context.Context, req *db_pb.CreateRequest, rsp *db_pb.Cr
 }
 
 func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest, rsp *db_pb.UpdateResponse) error {
+	var log = logger.GetLog(ctx)
+
 	if len(req.Record.AsMap()) == 0 {
 		return errors.BadRequest("db.update", "missing record")
 	}
@@ -144,13 +145,9 @@ func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest, rsp *db_pb.Up
 	if err != nil {
 		return err
 	}
-	logger.Infof("Updating table '%v'", tableName)
+	log.Sugar().Infof("Updating table '%v'", tableName)
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
-
+	db := e.Db.WithContext(ctx)
 	m := req.Record.AsMap()
 
 	// where ID is specified do a single update record update
@@ -195,7 +192,9 @@ func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest, rsp *db_pb.Up
 }
 
 func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadResponse) error {
-	recs := []Record{}
+	var log = logger.GetLog(ctx)
+
+	var recs []Record
 	queries, err := Parse(req.Query)
 	if err != nil {
 		return err
@@ -205,13 +204,10 @@ func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadRe
 		return err
 	}
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 	_, ok := c.Get(tableName)
 	if !ok {
-		logger.Infof("Creating table '%v'", tableName)
+		log.Sugar().Infof("Creating table '%v'", tableName)
 		db.Exec(fmt.Sprintf(stmt, tableName, tableName, tableName))
 		c.Set(tableName, true, 0)
 	}
@@ -225,11 +221,11 @@ func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadRe
 
 	db = db.Table(tableName)
 	if req.Id != "" {
-		logger.Infof("Query by id: %v", req.Id)
+		log.Sugar().Infof("Query by id: %v", req.Id)
 		db = db.Where("id = ?", req.Id)
 	} else {
 		for _, query := range queries {
-			logger.Infof("Query field: %v, op: %v, value: %v", query.Field, query.Op, query.Value)
+			log.Sugar().Infof("Query field: %v, op: %v, value: %v", query.Field, query.Op, query.Value)
 			typ := "text"
 			switch query.Value.(type) {
 			case int64:
@@ -303,6 +299,7 @@ func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadRe
 }
 
 func (e *Db) Delete(ctx context.Context, req *db_pb.DeleteRequest, rsp *db_pb.DeleteResponse) error {
+	var log = logger.GetLog(ctx)
 	if len(req.Id) == 0 {
 		return errors.BadRequest("db.delete", "missing id")
 	}
@@ -310,43 +307,35 @@ func (e *Db) Delete(ctx context.Context, req *db_pb.DeleteRequest, rsp *db_pb.De
 	if err != nil {
 		return err
 	}
-	logger.Infof("Deleting from table '%v'", tableName)
+	log.Sugar().Infof("Deleting from table '%v'", tableName)
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
-
+	db := e.Db.WithContext(ctx)
 	return db.Table(tableName).Delete(Record{
 		ID: req.Id,
 	}).Error
 }
 
 func (e *Db) Truncate(ctx context.Context, req *db_pb.TruncateRequest, rsp *db_pb.TruncateResponse) error {
+	var log = logger.GetLog(ctx)
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
 		return err
 	}
-	logger.Infof("Truncating table '%v'", tableName)
+	log.Sugar().Infof("Truncating table '%v'", tableName)
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 	return db.Exec(fmt.Sprintf(truncateStmt, tableName)).Error
 }
 
 func (e *Db) DropTable(ctx context.Context, req *db_pb.DropTableRequest, rsp *db_pb.DropTableResponse) error {
+	var log = logger.GetLog(ctx)
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
 		return err
 	}
-	logger.Infof("Dropping table '%v'", tableName)
+	log.Sugar().Infof("Dropping table '%v'", tableName)
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 	return db.Exec(fmt.Sprintf(dropTableStmt, tableName)).Error
 }
 
@@ -360,10 +349,7 @@ func (e *Db) Count(ctx context.Context, req *db_pb.CountRequest, rsp *db_pb.Coun
 		return err
 	}
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 
 	var a int64
 	err = db.Table(tableName).Model(Record{}).Count(&a).Error
@@ -375,6 +361,7 @@ func (e *Db) Count(ctx context.Context, req *db_pb.CountRequest, rsp *db_pb.Coun
 }
 
 func (e *Db) RenameTable(ctx context.Context, req *db_pb.RenameTableRequest, rsp *db_pb.RenameTableResponse) error {
+	var log = logger.GetLog(ctx)
 	if req.From == "" || req.To == "" {
 		return errors.BadRequest("db.renameTable", "must provide table names")
 	}
@@ -389,13 +376,10 @@ func (e *Db) RenameTable(ctx context.Context, req *db_pb.RenameTableRequest, rsp
 		return err
 	}
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 
 	stmt := fmt.Sprintf(renameTableStmt, oldtableName, newtableName)
-	logger.Info(stmt)
+	log.Sugar().Info(stmt)
 	return db.Debug().Exec(stmt).Error
 }
 
@@ -406,10 +390,7 @@ func (e *Db) ListTables(ctx context.Context, req *db_pb.ListTablesRequest, rsp *
 	}
 	tenantId = strings.Replace(strings.Replace(tenantId, "/", "_", -1), "-", "_", -1)
 
-	db, err := e.GetDBConn(ctx)
-	if err != nil {
-		return err
-	}
+	db := e.Db.WithContext(ctx)
 
 	var tables []string
 	if err := db.Table("information_schema.tables").Select("table_name").Where("table_schema = ?", "public").Find(&tables).Error; err != nil {

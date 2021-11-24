@@ -5,19 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/lavaxx/services/entry/db/db_pb"
 	"net/url"
 	"strings"
 	"time"
 
 	_struct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/micro/micro/v3/service/config"
-	"github.com/micro/micro/v3/service/logger"
-	db "github.com/micro/services/db/proto"
-	user "github.com/micro/services/user/proto"
-
+	"github.com/pubgo/lava/config"
+	"github.com/pubgo/lava/logger"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
+
+	"github.com/lavaxx/services/entry/db/db_pb"
+	"github.com/lavaxx/services/entry/user/user_pb"
 )
 
 var (
@@ -44,7 +43,7 @@ type passwordResetCode struct {
 }
 
 type Domain struct {
-	db         db1.DbClient
+	db         db_pb.DbClient
 	sengridKey string
 	fromEmail  string
 }
@@ -52,22 +51,21 @@ type Domain struct {
 var (
 	// TODO: use the config to drive this value
 	defaultSender = "noreply@email.m3ocontent.com"
+	logs          = logger.New("db")
 )
 
 func New(db db_pb.DbClient) *Domain {
 	var key, email string
-	cfg, err := config.Get("micro.user.sendgrid.api_key")
-	if err == nil {
-		key = cfg.String("")
+	key = config.GetCfg().GetString("micro.user.sendgrid.api_key")
+	email = config.GetCfg().GetString("micro.user.sendgrid.from_email")
+	if email == "" {
+		email = defaultSender
 	}
-	cfg, err = config.Get("micro.user.sendgrid.from_email")
-	if err == nil {
-		email = cfg.String(defaultSender)
-	}
+
 	if len(key) == 0 {
-		logger.Info("No email key found")
+		logs.Info("No email key found")
 	} else {
-		logger.Info("Email key found")
+		logs.Info("Email key found")
 	}
 	return &Domain{
 		sengridKey: key,
@@ -90,7 +88,7 @@ func (domain *Domain) SendEmail(fromName, toAddress, toUsername, subject, textCo
 	// send the email
 	client := sendgrid.NewSendClient(domain.sengridKey)
 	response, err := client.Send(message)
-	logger.Info(response)
+	logs.Info(response)
 
 	return err
 }
@@ -158,6 +156,7 @@ func (domain *Domain) ReadPasswordResetCode(ctx context.Context, userId, code st
 }
 
 func (domain *Domain) SendPasswordResetEmail(ctx context.Context, userId, codeStr, fromName, toAddress, toUsername, subject, textContent string) error {
+	var log = logger.GetLog(ctx)
 	if domain.sengridKey == "" {
 		return fmt.Errorf("empty email api key")
 	}
@@ -180,12 +179,12 @@ func (domain *Domain) SendPasswordResetEmail(ctx context.Context, userId, codeSt
 	response, err := client.Send(message)
 
 	// log the response
-	logger.Info(response)
+	log.Info(fmt.Sprint(response))
 
 	return err
 }
 
-func (domain *Domain) CreateSession(ctx context.Context, sess *user.Session) error {
+func (domain *Domain) CreateSession(ctx context.Context, sess *user_pb.Session) error {
 	if sess.Created == 0 {
 		sess.Created = time.Now().Unix()
 	}
@@ -200,7 +199,8 @@ func (domain *Domain) CreateSession(ctx context.Context, sess *user.Session) err
 	if err != nil {
 		return err
 	}
-	_, err = domain.db.Create(ctx, &db.CreateRequest{
+
+	_, err = domain.db.Create(ctx, &db_pb.CreateRequest{
 		Table:  "sessions",
 		Record: s,
 	})
@@ -208,7 +208,7 @@ func (domain *Domain) CreateSession(ctx context.Context, sess *user.Session) err
 }
 
 func (domain *Domain) DeleteSession(ctx context.Context, id string) error {
-	_, err := domain.db.Delete(ctx, &db.DeleteRequest{
+	_, err := domain.db.Delete(ctx, &db_pb.DeleteRequest{
 		Table: "sessions",
 		Id:    id,
 	})
@@ -225,7 +225,7 @@ func (domain *Domain) ReadToken(ctx context.Context, userId, token string) (stri
 
 	tk := &verificationToken{}
 
-	rsp, err := domain.db.Read(ctx, &db.ReadRequest{
+	rsp, err := domain.db.Read(ctx, &db_pb.ReadRequest{
 		Table: "tokens",
 		Query: fmt.Sprintf("id == '%v'", id),
 	})
@@ -257,7 +257,7 @@ func (domain *Domain) CreateToken(ctx context.Context, userId, token string) (st
 		return "", err
 	}
 
-	_, err = domain.db.Create(ctx, &db.CreateRequest{
+	_, err = domain.db.Create(ctx, &db_pb.CreateRequest{
 		Table:  "tokens",
 		Record: s,
 	})
@@ -265,15 +265,15 @@ func (domain *Domain) CreateToken(ctx context.Context, userId, token string) (st
 	return token, err
 }
 
-func (domain *Domain) ReadSession(ctx context.Context, id string) (*user.Session, error) {
-	sess := &user.Session{}
+func (domain *Domain) ReadSession(ctx context.Context, id string) (*user_pb.Session, error) {
+	sess := &user_pb.Session{}
 	if len(id) == 0 {
 		return nil, fmt.Errorf("no id provided")
 	}
 	q := fmt.Sprintf("id == '%v'", id)
-	logger.Infof("Running query: %v", q)
+	logs.Infof("Running query: %v", q)
 
-	rsp, err := domain.db.Read(ctx, &db.ReadRequest{
+	rsp, err := domain.db.Read(ctx, &db_pb.ReadRequest{
 		Table: "sessions",
 		Query: q,
 	})
@@ -288,7 +288,7 @@ func (domain *Domain) ReadSession(ctx context.Context, id string) (*user.Session
 	return sess, nil
 }
 
-func (domain *Domain) Create(ctx context.Context, user *user.Account, salt string, password string) error {
+func (domain *Domain) Create(ctx context.Context, user *user_pb.Account, salt string, password string) error {
 	user.Created = time.Now().Unix()
 	user.Updated = time.Now().Unix()
 
@@ -298,7 +298,7 @@ func (domain *Domain) Create(ctx context.Context, user *user.Account, salt strin
 	if err != nil {
 		return err
 	}
-	_, err = domain.db.Create(ctx, &db.CreateRequest{
+	_, err = domain.db.Create(ctx, &db_pb.CreateRequest{
 		Table:  "users",
 		Record: s,
 	})
@@ -317,7 +317,7 @@ func (domain *Domain) Create(ctx context.Context, user *user.Account, salt strin
 	if err != nil {
 		return err
 	}
-	_, err = domain.db.Create(ctx, &db.CreateRequest{
+	_, err = domain.db.Create(ctx, &db_pb.CreateRequest{
 		Table:  "passwords",
 		Record: s,
 	})
@@ -326,14 +326,14 @@ func (domain *Domain) Create(ctx context.Context, user *user.Account, salt strin
 }
 
 func (domain *Domain) Delete(ctx context.Context, id string) error {
-	_, err := domain.db.Delete(ctx, &db.DeleteRequest{
+	_, err := domain.db.Delete(ctx, &db_pb.DeleteRequest{
 		Table: "users",
 		Id:    id,
 	})
 	return err
 }
 
-func (domain *Domain) Update(ctx context.Context, user *user.Account) error {
+func (domain *Domain) Update(ctx context.Context, user *user_pb.Account) error {
 	user.Updated = time.Now().Unix()
 
 	s := &_struct.Struct{}
@@ -342,21 +342,21 @@ func (domain *Domain) Update(ctx context.Context, user *user.Account) error {
 	if err != nil {
 		return err
 	}
-	_, err = domain.db.Update(ctx, &db.UpdateRequest{
+	_, err = domain.db.Update(ctx, &db_pb.UpdateRequest{
 		Table:  "users",
 		Record: s,
 	})
 	return err
 }
 
-func (domain *Domain) Read(ctx context.Context, userId string) (*user.Account, error) {
-	user := &user.Account{}
+func (domain *Domain) Read(ctx context.Context, userId string) (*user_pb.Account, error) {
+	user := &user_pb.Account{}
 	if len(userId) == 0 {
 		return nil, fmt.Errorf("no id provided")
 	}
 	q := fmt.Sprintf("id == '%v'", userId)
-	logger.Infof("Running query: %v", q)
-	rsp, err := domain.db.Read(ctx, &db.ReadRequest{
+	logs.Infof("Running query: %v", q)
+	rsp, err := domain.db.Read(ctx, &db_pb.ReadRequest{
 		Table: "users",
 		Query: q,
 	})
@@ -371,7 +371,7 @@ func (domain *Domain) Read(ctx context.Context, userId string) (*user.Account, e
 	return user, nil
 }
 
-func (domain *Domain) Search(ctx context.Context, username, email string) ([]*user.Account, error) {
+func (domain *Domain) Search(ctx context.Context, username, email string) ([]*user_pb.Account, error) {
 	var query string
 	if len(username) > 0 {
 		query = fmt.Sprintf("username == '%v'", username)
@@ -381,9 +381,9 @@ func (domain *Domain) Search(ctx context.Context, username, email string) ([]*us
 		return nil, errors.New("username and email cannot be blank")
 	}
 
-	usr := &user.Account{}
+	usr := &user_pb.Account{}
 
-	rsp, err := domain.db.Read(ctx, &db.ReadRequest{
+	rsp, err := domain.db.Read(ctx, &db_pb.ReadRequest{
 		Table: "users",
 		Query: query,
 	})
@@ -395,7 +395,7 @@ func (domain *Domain) Search(ctx context.Context, username, email string) ([]*us
 	}
 	m, _ := rsp.Records[0].MarshalJSON()
 	json.Unmarshal(m, usr)
-	return []*user.Account{usr}, nil
+	return []*user_pb.Account{usr}, nil
 }
 
 func (domain *Domain) UpdatePassword(ctx context.Context, id string, salt string, password string) error {
@@ -410,7 +410,7 @@ func (domain *Domain) UpdatePassword(ctx context.Context, id string, salt string
 	if err != nil {
 		return err
 	}
-	_, err = domain.db.Update(ctx, &db.UpdateRequest{
+	_, err = domain.db.Update(ctx, &db_pb.UpdateRequest{
 		Table:  "passwords",
 		Record: s,
 	})
@@ -420,7 +420,7 @@ func (domain *Domain) UpdatePassword(ctx context.Context, id string, salt string
 func (domain *Domain) SaltAndPassword(ctx context.Context, userId string) (string, string, error) {
 	password := &pw{}
 
-	rsp, err := domain.db.Read(ctx, &db.ReadRequest{
+	rsp, err := domain.db.Read(ctx, &db_pb.ReadRequest{
 		Table: "passwords",
 		Query: fmt.Sprintf("id == '%v'", userId),
 	})
@@ -435,7 +435,7 @@ func (domain *Domain) SaltAndPassword(ctx context.Context, userId string) (strin
 	return password.Salt, password.Password, nil
 }
 
-func (domain *Domain) List(ctx context.Context, o, l int32) ([]*user.Account, error) {
+func (domain *Domain) List(ctx context.Context, o, l int32) ([]*user_pb.Account, error) {
 	var limit int32 = 25
 	var offset int32 = 0
 	if l > 0 {
@@ -444,7 +444,7 @@ func (domain *Domain) List(ctx context.Context, o, l int32) ([]*user.Account, er
 	if o > 0 {
 		offset = o
 	}
-	rsp, err := domain.db.Read(ctx, &db.ReadRequest{
+	rsp, err := domain.db.Read(ctx, &db_pb.ReadRequest{
 		Table:  "users",
 		Limit:  limit,
 		Offset: offset,
@@ -455,10 +455,10 @@ func (domain *Domain) List(ctx context.Context, o, l int32) ([]*user.Account, er
 	if len(rsp.Records) == 0 {
 		return nil, ErrNotFound
 	}
-	ret := make([]*user.Account, len(rsp.Records))
+	ret := make([]*user_pb.Account, len(rsp.Records))
 	for i, v := range rsp.Records {
 		m, _ := v.MarshalJSON()
-		var user user.Account
+		var user user_pb.Account
 		json.Unmarshal(m, &user)
 		ret[i] = &user
 	}

@@ -9,16 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lavaxx/services/entry/db/db_pb"
-	"github.com/lavaxx/services/entry/otp/otp_pb"
-	"github.com/lavaxx/services/entry/user/domain"
-
 	"github.com/google/uuid"
-	"github.com/micro/micro/v3/service/errors"
-	otp "github.com/micro/services/otp/proto"
-	pb "github.com/micro/services/user/proto"
+	"github.com/pubgo/lava/errors"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
+
+	"github.com/lavaxx/services/entry/db"
+	"github.com/lavaxx/services/entry/db/db_pb"
+	"github.com/lavaxx/services/entry/otp"
+	"github.com/lavaxx/services/entry/otp/otp_pb"
+	"github.com/lavaxx/services/entry/user/domain"
+	"github.com/lavaxx/services/entry/user/user_pb"
 )
 
 const (
@@ -44,18 +45,17 @@ func random(i int) string {
 
 type User struct {
 	domain *domain.Domain
-	Otp    otp.OtpService
 	dbCli  db_pb.DbClient
 	otpCli otp_pb.OtpClient
 }
 
 func (s *User) Init() {
-	s.dbCli = db_pb.GetDbClient("db")
+	s.dbCli = db_pb.GetDbClient(db.Name)
 	s.domain = domain.New(s.dbCli)
-	s.otpCli = otp_pb.GetOtpClient("otp")
+	s.otpCli = otp_pb.GetOtpClient(otp.Name)
 }
 
-func (s *User) Create(ctx context.Context, req *pb.CreateRequest, rsp *pb.CreateResponse) error {
+func (s *User) Create(ctx context.Context, req *user_pb.CreateRequest, rsp *user_pb.CreateResponse) error {
 	if !emailFormat.MatchString(req.Email) {
 		return errors.BadRequest("create.email-format-check", "email has wrong format")
 	}
@@ -91,7 +91,7 @@ func (s *User) Create(ctx context.Context, req *pb.CreateRequest, rsp *pb.Create
 		req.Id = uuid.New().String()
 	}
 
-	acc := &pb.Account{
+	acc := &user_pb.Account{
 		Id:       req.Id,
 		Username: req.Username,
 		Email:    req.Email,
@@ -109,7 +109,7 @@ func (s *User) Create(ctx context.Context, req *pb.CreateRequest, rsp *pb.Create
 	return nil
 }
 
-func (s *User) Read(ctx context.Context, req *pb.ReadRequest, rsp *pb.ReadResponse) error {
+func (s *User) Read(ctx context.Context, req *user_pb.ReadRequest, rsp *user_pb.ReadResponse) error {
 	switch {
 	case req.Id != "":
 		account, err := s.domain.Read(ctx, req.Id)
@@ -129,8 +129,8 @@ func (s *User) Read(ctx context.Context, req *pb.ReadRequest, rsp *pb.ReadRespon
 	return nil
 }
 
-func (s *User) Update(ctx context.Context, req *pb.UpdateRequest, rsp *pb.UpdateResponse) error {
-	return s.domain.Update(ctx, &pb.Account{
+func (s *User) Update(ctx context.Context, req *user_pb.UpdateRequest, rsp *user_pb.UpdateResponse) error {
+	return s.domain.Update(ctx, &user_pb.Account{
 		Id:       req.Id,
 		Username: strings.ToLower(req.Username),
 		Email:    strings.ToLower(req.Email),
@@ -138,11 +138,11 @@ func (s *User) Update(ctx context.Context, req *pb.UpdateRequest, rsp *pb.Update
 	})
 }
 
-func (s *User) Delete(ctx context.Context, req *pb.DeleteRequest, rsp *pb.DeleteResponse) error {
+func (s *User) Delete(ctx context.Context, req *user_pb.DeleteRequest, rsp *user_pb.DeleteResponse) error {
 	return s.domain.Delete(ctx, req.Id)
 }
 
-func (s *User) UpdatePassword(ctx context.Context, req *pb.UpdatePasswordRequest, rsp *pb.UpdatePasswordResponse) error {
+func (s *User) UpdatePassword(ctx context.Context, req *user_pb.UpdatePasswordRequest, rsp *user_pb.UpdatePasswordResponse) error {
 	usr, err := s.domain.Read(ctx, req.UserId)
 	if err != nil {
 		return errors.InternalServerError("user.updatepassword", err.Error())
@@ -178,7 +178,7 @@ func (s *User) UpdatePassword(ctx context.Context, req *pb.UpdatePasswordRequest
 	return nil
 }
 
-func (s *User) Login(ctx context.Context, req *pb.LoginRequest, rsp *pb.LoginResponse) error {
+func (s *User) Login(ctx context.Context, req *user_pb.LoginRequest, rsp *user_pb.LoginResponse) error {
 	username := strings.ToLower(req.Username)
 	email := strings.ToLower(req.Email)
 
@@ -203,7 +203,7 @@ func (s *User) Login(ctx context.Context, req *pb.LoginRequest, rsp *pb.LoginRes
 		return errors.Unauthorized("user.login", err.Error())
 	}
 	// save session
-	sess := &pb.Session{
+	sess := &user_pb.Session{
 		Id:      random(128),
 		Created: time.Now().Unix(),
 		Expires: time.Now().Add(time.Hour * 24 * 7).Unix(),
@@ -217,11 +217,11 @@ func (s *User) Login(ctx context.Context, req *pb.LoginRequest, rsp *pb.LoginRes
 	return nil
 }
 
-func (s *User) Logout(ctx context.Context, req *pb.LogoutRequest, rsp *pb.LogoutResponse) error {
+func (s *User) Logout(ctx context.Context, req *user_pb.LogoutRequest, rsp *user_pb.LogoutResponse) error {
 	return s.domain.DeleteSession(ctx, req.SessionId)
 }
 
-func (s *User) ReadSession(ctx context.Context, req *pb.ReadSessionRequest, rsp *pb.ReadSessionResponse) error {
+func (s *User) ReadSession(ctx context.Context, req *user_pb.ReadSessionRequest, rsp *user_pb.ReadSessionResponse) error {
 	sess, err := s.domain.ReadSession(ctx, req.SessionId)
 	if err != nil {
 		return err
@@ -230,7 +230,7 @@ func (s *User) ReadSession(ctx context.Context, req *pb.ReadSessionRequest, rsp 
 	return nil
 }
 
-func (s *User) VerifyEmail(ctx context.Context, req *pb.VerifyEmailRequest, rsp *pb.VerifyEmailResponse) error {
+func (s *User) VerifyEmail(ctx context.Context, req *user_pb.VerifyEmailRequest, rsp *user_pb.VerifyEmailResponse) error {
 	if len(req.Email) == 0 {
 		return errors.BadRequest("user.verifyemail", "missing email")
 	}
@@ -245,7 +245,7 @@ func (s *User) VerifyEmail(ctx context.Context, req *pb.VerifyEmailRequest, rsp 
 	}
 
 	// validate the code, e.g its an OTP token and hasn't expired
-	resp, err := s.Otp.Validate(ctx, &otp.ValidateRequest{
+	resp, err := s.otpCli.Validate(ctx, &otp_pb.ValidateRequest{
 		Id:   req.Email,
 		Code: req.Token,
 	})
@@ -266,7 +266,7 @@ func (s *User) VerifyEmail(ctx context.Context, req *pb.VerifyEmailRequest, rsp 
 	return s.domain.Update(ctx, user)
 }
 
-func (s *User) SendVerificationEmail(ctx context.Context, req *pb.SendVerificationEmailRequest, rsp *pb.SendVerificationEmailResponse) error {
+func (s *User) SendVerificationEmail(ctx context.Context, req *user_pb.SendVerificationEmailRequest, rsp *user_pb.SendVerificationEmailResponse) error {
 	if len(req.Email) == 0 {
 		return errors.BadRequest("user.sendverificationemail", "missing email")
 	}
@@ -278,7 +278,7 @@ func (s *User) SendVerificationEmail(ctx context.Context, req *pb.SendVerificati
 	}
 
 	// generate a new OTP code
-	resp, err := s.Otp.Generate(ctx, &otp.GenerateRequest{
+	resp, err := s.otpCli.Generate(ctx, &otp_pb.GenerateRequest{
 		Expiry: 300,
 		Id:     req.Email,
 	})
@@ -296,7 +296,7 @@ func (s *User) SendVerificationEmail(ctx context.Context, req *pb.SendVerificati
 	return s.domain.SendEmail(req.FromName, req.Email, users[0].Username, req.Subject, req.TextContent, token, req.RedirectUrl, req.FailureRedirectUrl)
 }
 
-func (s *User) SendPasswordResetEmail(ctx context.Context, req *pb.SendPasswordResetEmailRequest, rsp *pb.SendPasswordResetEmailResponse) error {
+func (s *User) SendPasswordResetEmail(ctx context.Context, req *user_pb.SendPasswordResetEmailRequest, rsp *user_pb.SendPasswordResetEmailResponse) error {
 	if len(req.Email) == 0 {
 		return errors.BadRequest("user.sendpasswordresetemail", "missing email")
 	}
@@ -308,7 +308,7 @@ func (s *User) SendPasswordResetEmail(ctx context.Context, req *pb.SendPasswordR
 	}
 
 	// generate a new OTP code
-	resp, err := s.Otp.Generate(ctx, &otp.GenerateRequest{
+	resp, err := s.otpCli.Generate(ctx, &otp_pb.GenerateRequest{
 		Expiry: 300,
 		Id:     req.Email,
 	})
@@ -321,7 +321,7 @@ func (s *User) SendPasswordResetEmail(ctx context.Context, req *pb.SendPasswordR
 	return s.domain.SendPasswordResetEmail(ctx, users[0].Id, resp.Code, req.FromName, req.Email, users[0].Username, req.Subject, req.TextContent)
 }
 
-func (s *User) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest, rsp *pb.ResetPasswordResponse) error {
+func (s *User) ResetPassword(ctx context.Context, req *user_pb.ResetPasswordRequest, rsp *user_pb.ResetPasswordResponse) error {
 	if len(req.Email) == 0 {
 		return errors.BadRequest("user.resetpassword", "missing email")
 	}
@@ -345,7 +345,7 @@ func (s *User) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest, 
 	}
 
 	// validate the code, e.g its an OTP token and hasn't expired
-	resp, err := s.Otp.Validate(ctx, &otp.ValidateRequest{
+	resp, err := s.otpCli.Validate(ctx, &otp_pb.ValidateRequest{
 		Id:   req.Email,
 		Code: req.Code,
 	})
@@ -377,12 +377,12 @@ func (s *User) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest, 
 	return nil
 }
 
-func (s *User) List(ctx goctx.Context, request *pb.ListRequest, response *pb.ListResponse) error {
+func (s *User) List(ctx goctx.Context, request *user_pb.ListRequest, response *user_pb.ListResponse) error {
 	accs, err := s.domain.List(ctx, request.Offset, request.Limit)
 	if err != nil && err != domain.ErrNotFound {
 		return errors.InternalServerError("user.List", "Error retrieving user list")
 	}
-	response.Users = make([]*pb.Account, len(accs))
+	response.Users = make([]*user_pb.Account, len(accs))
 	for i, v := range accs {
 		response.Users[i] = v
 	}

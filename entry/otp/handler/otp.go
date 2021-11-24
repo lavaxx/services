@@ -13,10 +13,11 @@ import (
 	"github.com/lavaxx/services/entry/otp/otp_pb"
 )
 
+var _ otp_pb.OtpServer = (*Otp)(nil)
+
 type Otp struct{}
 
 func (e *Otp) Init() {
-	panic("implement me")
 }
 
 type otpKey struct {
@@ -24,11 +25,11 @@ type otpKey struct {
 	Expiry uint
 }
 
-func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest, rsp *otp_pb.GenerateResponse) error {
+func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest) (*otp_pb.GenerateResponse, error) {
 	var log = logger.GetLog(ctx)
 
 	if len(req.Id) == 0 {
-		return errors.BadRequest("otp.generate", "missing id")
+		return nil, errors.BadRequest("otp.generate", "missing id")
 	}
 
 	// check if a key exists for the user
@@ -52,7 +53,7 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest, rsp *ot
 		})
 		if err != nil {
 			log.Error("Failed to generate secret", logger.WithErr(err)...)
-			return errors.InternalServerError("otp.generate", "failed to generate code")
+			return nil, errors.InternalServerError("otp.generate", "failed to generate code")
 		}
 
 		okey = &otpKey{
@@ -62,7 +63,7 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest, rsp *ot
 
 		if err := cache.Context(ctx).Set("otp:"+req.Id, okey, time.Now().Add(time.Minute*5)); err != nil {
 			log.Error("Failed to store secret", logger.WithErr(err)...)
-			return errors.InternalServerError("otp.generate", "failed to generate code")
+			return nil, errors.InternalServerError("otp.generate", "failed to generate code")
 		}
 	}
 
@@ -77,7 +78,7 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest, rsp *ot
 	})
 
 	if err != nil {
-		return errors.InternalServerError("otp.generate", "failed to generate code: %v", err)
+		return nil, errors.InternalServerError("otp.generate", "failed to generate code: %v", err)
 	}
 
 	// we have to replaced the cached value if the expiry is different
@@ -86,31 +87,28 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest, rsp *ot
 
 		if err := cache.Context(ctx).Set("otp:"+req.Id, okey, time.Now().Add(time.Minute*5)); err != nil {
 			log.Sugar().Errorf("Failed to store secret: %v", err)
-			return errors.InternalServerError("otp.generate", "failed to generate code")
+			return nil, errors.InternalServerError("otp.generate", "failed to generate code")
 		}
 	}
 
-	// return the code
-	rsp.Code = code
-
-	return nil
+	return &otp_pb.GenerateResponse{Code: code}, nil
 }
 
-func (e *Otp) Validate(ctx context.Context, req *otp_pb.ValidateRequest, rsp *otp_pb.ValidateResponse) error {
+func (e *Otp) Validate(ctx context.Context, req *otp_pb.ValidateRequest, ) (*otp_pb.ValidateResponse, error) {
 	var log = logger.GetLog(ctx)
 
 	if len(req.Id) == 0 {
-		return errors.BadRequest("otp.generate", "missing id")
+		return nil, errors.BadRequest("otp.generate", "missing id")
 	}
 	if len(req.Code) == 0 {
-		return errors.BadRequest("otp.generate", "missing code")
+		return nil, errors.BadRequest("otp.generate", "missing code")
 	}
 
 	key := new(otpKey)
 
 	if err := cache.Context(ctx).Get("otp:"+req.Id, &key); err != nil {
 		log.Sugar().Errorf("Failed to get secret from store: %v", err)
-		return errors.InternalServerError("otp.generate", "failed to validate code")
+		return nil, errors.InternalServerError("otp.generate", "failed to validate code")
 	}
 
 	log.Sugar().Info("validating the code: ", key.Secret, " ", key.Expiry)
@@ -121,11 +119,8 @@ func (e *Otp) Validate(ctx context.Context, req *otp_pb.ValidateRequest, rsp *ot
 		Algorithm: otp.AlgorithmSHA1,
 	})
 	if err != nil {
-		return errors.InternalServerError("otp.generate", "failed to validate code")
+		return nil, errors.InternalServerError("otp.generate", "failed to validate code")
 	}
 
-	// set the response
-	rsp.Success = ok
-
-	return nil
+	return &otp_pb.ValidateResponse{Success: ok}, nil
 }
