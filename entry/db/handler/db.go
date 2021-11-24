@@ -40,6 +40,8 @@ type Record struct {
 	UpdatedAt time.Time
 }
 
+var _ db_pb.DbServer = (*Db)(nil)
+
 type Db struct {
 	Db *orm.Client `dix:""`
 }
@@ -95,22 +97,22 @@ func (e *Db) tableName(ctx context.Context, t string) (string, error) {
 }
 
 // Call is a single request handler called via client.Call or the generated client code
-func (e *Db) Create(ctx context.Context, req *db_pb.CreateRequest, rsp *db_pb.CreateResponse) error {
+func (e *Db) Create(ctx context.Context, req *db_pb.CreateRequest) (*db_pb.CreateResponse, error) {
 	var log = logger.GetLog(ctx)
 	if len(req.Record.AsMap()) == 0 {
-		return errors.BadRequest("db.create", "missing record")
+		return nil, errors.BadRequest("db.create", "missing record")
 	}
 
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.Sugar().Infof("Inserting into table '%v'", tableName)
+	log.Infof("Inserting into table '%v'", tableName)
 
 	db := e.Db.WithContext(ctx)
 	_, ok := c.Get(tableName)
 	if !ok {
-		log.Sugar().Infof("Creating table '%v'", tableName)
+		log.Infof("Creating table '%v'", tableName)
 		db.Exec(fmt.Sprintf(stmt, tableName, tableName, tableName))
 		c.Set(tableName, true, 0)
 	}
@@ -126,26 +128,23 @@ func (e *Db) Create(ctx context.Context, req *db_pb.CreateRequest, rsp *db_pb.Cr
 		Data: bs,
 	}).Error
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// set the response id
-	rsp.Id = m[idKey].(string)
-
-	return nil
+	return &db_pb.CreateResponse{Id: m[idKey].(string)}, nil
 }
 
-func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest, rsp *db_pb.UpdateResponse) error {
+func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest) (*db_pb.UpdateResponse, error) {
 	var log = logger.GetLog(ctx)
 
 	if len(req.Record.AsMap()) == 0 {
-		return errors.BadRequest("db.update", "missing record")
+		return nil, errors.BadRequest("db.update", "missing record")
 	}
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.Sugar().Infof("Updating table '%v'", tableName)
+	log.Infof("Updating table '%v'", tableName)
 
 	db := e.Db.WithContext(ctx)
 	m := req.Record.AsMap()
@@ -161,11 +160,11 @@ func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest, rsp *db_pb.Up
 		var ok bool
 		id, ok = m[idKey].(string)
 		if !ok {
-			return fmt.Errorf("update failed: missing id")
+			return nil, fmt.Errorf("update failed: missing id")
 		}
 	}
 
-	return db.Transaction(func(tx *gorm.DB) error {
+	return nil, db.Transaction(func(tx *gorm.DB) error {
 		rec := []Record{}
 		err = tx.Table(tableName).Where("id = ?", id).Find(&rec).Error
 		if err != nil {
@@ -191,29 +190,29 @@ func (e *Db) Update(ctx context.Context, req *db_pb.UpdateRequest, rsp *db_pb.Up
 	})
 }
 
-func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadResponse) error {
+func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest) (*db_pb.ReadResponse, error) {
 	var log = logger.GetLog(ctx)
 
 	var recs []Record
 	queries, err := Parse(req.Query)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	db := e.Db.WithContext(ctx)
 	_, ok := c.Get(tableName)
 	if !ok {
-		log.Sugar().Infof("Creating table '%v'", tableName)
+		log.Infof("Creating table '%v'", tableName)
 		db.Exec(fmt.Sprintf(stmt, tableName, tableName, tableName))
 		c.Set(tableName, true, 0)
 	}
 
 	if req.Limit > 1000 {
-		return errors.BadRequest("db.read", fmt.Sprintf("limit over 1000 is invalid, you specified %v", req.Limit))
+		return nil, errors.BadRequest("db.read", fmt.Sprintf("limit over 1000 is invalid, you specified %v", req.Limit))
 	}
 	if req.Limit == 0 {
 		req.Limit = 25
@@ -221,11 +220,11 @@ func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadRe
 
 	db = db.Table(tableName)
 	if req.Id != "" {
-		log.Sugar().Infof("Query by id: %v", req.Id)
+		log.Infof("Query by id: %v", req.Id)
 		db = db.Where("id = ?", req.Id)
 	} else {
 		for _, query := range queries {
-			log.Sugar().Infof("Query field: %v, op: %v, value: %v", query.Field, query.Op, query.Value)
+			log.Infof("Query field: %v, op: %v, value: %v", query.Field, query.Op, query.Value)
 			typ := "text"
 			switch query.Value.(type) {
 			case int64:
@@ -267,21 +266,22 @@ func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadRe
 		case "", "desc":
 			ordering = "desc"
 		default:
-			return errors.BadRequest("db.read", "invalid ordering: "+req.Order)
+			return nil, errors.BadRequest("db.read", "invalid ordering: "+req.Order)
 		}
 	}
 
 	db = db.Order(orderField + " " + ordering).Offset(int(req.Offset)).Limit(int(req.Limit))
 	err = db.Debug().Find(&recs).Error
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	rsp := new(db_pb.ReadResponse)
 	rsp.Records = []*structpb.Struct{}
 	for _, rec := range recs {
 		m, err := rec.Data.MarshalJSON()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ma := map[string]interface{}{}
 		json.Unmarshal(m, &ma)
@@ -290,63 +290,63 @@ func (e *Db) Read(ctx context.Context, req *db_pb.ReadRequest, rsp *db_pb.ReadRe
 		s := &structpb.Struct{}
 		err = s.UnmarshalJSON(m)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rsp.Records = append(rsp.Records, s)
 	}
 
-	return nil
+	return rsp, nil
 }
 
-func (e *Db) Delete(ctx context.Context, req *db_pb.DeleteRequest, rsp *db_pb.DeleteResponse) error {
+func (e *Db) Delete(ctx context.Context, req *db_pb.DeleteRequest) (*db_pb.DeleteResponse, error) {
 	var log = logger.GetLog(ctx)
 	if len(req.Id) == 0 {
-		return errors.BadRequest("db.delete", "missing id")
+		return nil, errors.BadRequest("db.delete", "missing id")
 	}
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.Sugar().Infof("Deleting from table '%v'", tableName)
+	log.Infof("Deleting from table '%v'", tableName)
 
 	db := e.Db.WithContext(ctx)
-	return db.Table(tableName).Delete(Record{
+	return nil, db.Table(tableName).Delete(Record{
 		ID: req.Id,
 	}).Error
 }
 
-func (e *Db) Truncate(ctx context.Context, req *db_pb.TruncateRequest, rsp *db_pb.TruncateResponse) error {
+func (e *Db) Truncate(ctx context.Context, req *db_pb.TruncateRequest) (*db_pb.TruncateResponse, error) {
 	var log = logger.GetLog(ctx)
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.Sugar().Infof("Truncating table '%v'", tableName)
+	log.Infof("Truncating table '%v'", tableName)
 
 	db := e.Db.WithContext(ctx)
-	return db.Exec(fmt.Sprintf(truncateStmt, tableName)).Error
+	return nil, db.Exec(fmt.Sprintf(truncateStmt, tableName)).Error
 }
 
-func (e *Db) DropTable(ctx context.Context, req *db_pb.DropTableRequest, rsp *db_pb.DropTableResponse) error {
+func (e *Db) DropTable(ctx context.Context, req *db_pb.DropTableRequest) (*db_pb.DropTableResponse, error) {
 	var log = logger.GetLog(ctx)
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.Sugar().Infof("Dropping table '%v'", tableName)
+	log.Infof("Dropping table '%v'", tableName)
 
 	db := e.Db.WithContext(ctx)
-	return db.Exec(fmt.Sprintf(dropTableStmt, tableName)).Error
+	return nil, db.Exec(fmt.Sprintf(dropTableStmt, tableName)).Error
 }
 
-func (e *Db) Count(ctx context.Context, req *db_pb.CountRequest, rsp *db_pb.CountResponse) error {
+func (e *Db) Count(ctx context.Context, req *db_pb.CountRequest) (*db_pb.CountResponse, error) {
 	if req.Table == "" {
 		req.Table = "default"
 	}
 
 	tableName, err := e.tableName(ctx, req.Table)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	db := e.Db.WithContext(ctx)
@@ -354,36 +354,38 @@ func (e *Db) Count(ctx context.Context, req *db_pb.CountRequest, rsp *db_pb.Coun
 	var a int64
 	err = db.Table(tableName).Model(Record{}).Count(&a).Error
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	rsp := new(db_pb.CountResponse)
 	rsp.Count = int32(a)
-	return nil
+	return rsp, nil
 }
 
-func (e *Db) RenameTable(ctx context.Context, req *db_pb.RenameTableRequest, rsp *db_pb.RenameTableResponse) error {
+func (e *Db) RenameTable(ctx context.Context, req *db_pb.RenameTableRequest) (*db_pb.RenameTableResponse, error) {
 	var log = logger.GetLog(ctx)
 	if req.From == "" || req.To == "" {
-		return errors.BadRequest("db.renameTable", "must provide table names")
+		return nil, errors.BadRequest("db.renameTable", "must provide table names")
 	}
 
 	oldtableName, err := e.tableName(ctx, req.From)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	newtableName, err := e.tableName(ctx, req.To)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	db := e.Db.WithContext(ctx)
 
 	stmt := fmt.Sprintf(renameTableStmt, oldtableName, newtableName)
-	log.Sugar().Info(stmt)
-	return db.Debug().Exec(stmt).Error
+	log.Info(stmt)
+	return nil, db.Debug().Exec(stmt).Error
 }
 
-func (e *Db) ListTables(ctx context.Context, req *db_pb.ListTablesRequest, rsp *db_pb.ListTablesResponse) error {
+func (e *Db) ListTables(ctx context.Context, req *db_pb.ListTablesRequest) (*db_pb.ListTablesResponse, error) {
 	tenantId, ok := tenant.FromContext(ctx)
 	if !ok {
 		tenantId = "micro"
@@ -394,13 +396,15 @@ func (e *Db) ListTables(ctx context.Context, req *db_pb.ListTablesRequest, rsp *
 
 	var tables []string
 	if err := db.Table("information_schema.tables").Select("table_name").Where("table_schema = ?", "public").Find(&tables).Error; err != nil {
-		return err
+		return nil, err
 	}
+
+	rsp := new(db_pb.ListTablesResponse)
 	rsp.Tables = []string{}
 	for _, v := range tables {
 		if strings.HasPrefix(v, tenantId) {
 			rsp.Tables = append(rsp.Tables, strings.Replace(v, tenantId+"_", "", -1))
 		}
 	}
-	return nil
+	return rsp, nil
 }

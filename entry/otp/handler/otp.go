@@ -51,8 +51,9 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest) (*otp_p
 			Period:      300,
 			Algorithm:   otp.AlgorithmSHA1,
 		})
+
 		if err != nil {
-			log.Error("Failed to generate secret", logger.WithErr(err)...)
+			log.WithErr(err).Error("Failed to generate secret")
 			return nil, errors.InternalServerError("otp.generate", "failed to generate code")
 		}
 
@@ -62,12 +63,12 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest) (*otp_p
 		}
 
 		if err := cache.Context(ctx).Set("otp:"+req.Id, okey, time.Now().Add(time.Minute*5)); err != nil {
-			log.Error("Failed to store secret", logger.WithErr(err)...)
+			log.WithErr(err).Error("Failed to store secret")
 			return nil, errors.InternalServerError("otp.generate", "failed to generate code")
 		}
 	}
 
-	log.Sugar().Info("generating the code: ", okey.Secret, " ", okey.Expiry)
+	log.Info("generating the code: ", okey.Secret, " ", okey.Expiry)
 
 	// generate a new code
 	code, err := totp.GenerateCodeCustom(okey.Secret, time.Now(), totp.ValidateOpts{
@@ -86,7 +87,7 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest) (*otp_p
 		okey.Expiry = v
 
 		if err := cache.Context(ctx).Set("otp:"+req.Id, okey, time.Now().Add(time.Minute*5)); err != nil {
-			log.Sugar().Errorf("Failed to store secret: %v", err)
+			log.Errorf("Failed to store secret: %v", err)
 			return nil, errors.InternalServerError("otp.generate", "failed to generate code")
 		}
 	}
@@ -94,7 +95,7 @@ func (e *Otp) Generate(ctx context.Context, req *otp_pb.GenerateRequest) (*otp_p
 	return &otp_pb.GenerateResponse{Code: code}, nil
 }
 
-func (e *Otp) Validate(ctx context.Context, req *otp_pb.ValidateRequest, ) (*otp_pb.ValidateResponse, error) {
+func (e *Otp) Validate(ctx context.Context, req *otp_pb.ValidateRequest) (*otp_pb.ValidateResponse, error) {
 	var log = logger.GetLog(ctx)
 
 	if len(req.Id) == 0 {
@@ -107,11 +108,11 @@ func (e *Otp) Validate(ctx context.Context, req *otp_pb.ValidateRequest, ) (*otp
 	key := new(otpKey)
 
 	if err := cache.Context(ctx).Get("otp:"+req.Id, &key); err != nil {
-		log.Sugar().Errorf("Failed to get secret from store: %v", err)
+		log.Errorf("Failed to get secret from store: %v", err)
 		return nil, errors.InternalServerError("otp.generate", "failed to validate code")
 	}
 
-	log.Sugar().Info("validating the code: ", key.Secret, " ", key.Expiry)
+	log.Info("validating the code: ", key.Secret, " ", key.Expiry)
 	ok, err := totp.ValidateCustom(req.Code, key.Secret, time.Now(), totp.ValidateOpts{
 		Period:    key.Expiry,
 		Skew:      1,

@@ -2,20 +2,17 @@ module github.com/lavaxx/services
 
 go 1.17
 
-replace github.com/go-echarts/statsview => github.com/pubgo/statsview v0.3.5
-
 require (
 	github.com/crufter/lexer v0.0.0-20120907053443-23fe8c7add01
 	github.com/gin-gonic/gin v1.7.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
-	github.com/micro/micro/v3 v3.7.1-0.20211111170433-1ebb8328e280
 	github.com/micro/services v0.23.0
 	github.com/mwitkow/go-proto-validators v0.3.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pquerna/otp v1.3.0
-	github.com/pubgo/lava v0.1.19
+	github.com/pubgo/lava v0.1.23
 	github.com/pubgo/xerror v0.4.16
 	github.com/sendgrid/sendgrid-go v3.10.0+incompatible
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
@@ -77,6 +74,7 @@ require (
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
+	github.com/goccy/go-json v0.7.10 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.1.0 // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
@@ -140,6 +138,7 @@ require (
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
+	github.com/micro/micro/v3 v3.7.1-0.20211111170433-1ebb8328e280 // indirect
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/mitchellh/copystructure v1.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

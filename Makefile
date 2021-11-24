@@ -15,7 +15,7 @@ LDFLAGS=-ldflags " \
 build:
 	go build ${LDFLAGS} -v -o main cmd/*.go
 
-.PHONY: test./ma
+.PHONY: test
 test:
 	@go test -short -race -v ./... -cover
 

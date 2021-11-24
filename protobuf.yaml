@@ -1,5 +1,4 @@
 root:
-- proto
 - entry
 deps:
 - name: google
