@@ -30,8 +30,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "Create",
 		Method:       "POST",
-		Path:         "/db-pb/db/create",
-		DefaultUrl:   true,
+		Path:         "/db/db/create",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -41,8 +41,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "Read",
 		Method:       "POST",
-		Path:         "/db-pb/db/read",
-		DefaultUrl:   true,
+		Path:         "/db/db/read",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -52,8 +52,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "Update",
 		Method:       "POST",
-		Path:         "/db-pb/db/update",
-		DefaultUrl:   true,
+		Path:         "/db/db/update",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -63,8 +63,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "Delete",
 		Method:       "POST",
-		Path:         "/db-pb/db/delete",
-		DefaultUrl:   true,
+		Path:         "/db/db/delete",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -74,8 +74,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "Truncate",
 		Method:       "POST",
-		Path:         "/db-pb/db/truncate",
-		DefaultUrl:   true,
+		Path:         "/db/db/truncate",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -85,8 +85,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "Count",
 		Method:       "POST",
-		Path:         "/db-pb/db/count",
-		DefaultUrl:   true,
+		Path:         "/db/db/count",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -96,8 +96,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "RenameTable",
 		Method:       "POST",
-		Path:         "/db-pb/db/rename-table",
-		DefaultUrl:   true,
+		Path:         "/db/db/rename-table",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -107,8 +107,8 @@ func init() {
 		Service:      "db.Db",
 		Name:         "ListTables",
 		Method:       "POST",
-		Path:         "/db-pb/db/list-tables",
-		DefaultUrl:   true,
+		Path:         "/db/db/list-tables",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
@@ -118,73 +118,74 @@ func init() {
 		Service:      "db.Db",
 		Name:         "DropTable",
 		Method:       "POST",
-		Path:         "/db-pb/db/drop-table",
-		DefaultUrl:   true,
+		Path:         "/db/db/drop-table",
+		DefaultUrl:   false,
 		ClientStream: false,
 		ServerStream: false,
 	})
 	xgen.Add(RegisterDbServer, mthList)
+	xgen.Add(RegisterDbHandler, nil)
 	xgen.Add(RegisterDbGinServer, nil)
 }
 func RegisterDbGinServer(r gin.IRouter, server DbServer) {
 	xerror.Assert(r == nil || server == nil, "router or server is nil")
-	r.Handle("POST", "/db-pb/db/create", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/create", func(ctx *gin.Context) {
 		var req = new(CreateRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.Create(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/read", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/read", func(ctx *gin.Context) {
 		var req = new(ReadRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.Read(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/update", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/update", func(ctx *gin.Context) {
 		var req = new(UpdateRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.Update(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/delete", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/delete", func(ctx *gin.Context) {
 		var req = new(DeleteRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.Delete(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/truncate", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/truncate", func(ctx *gin.Context) {
 		var req = new(TruncateRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.Truncate(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/count", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/count", func(ctx *gin.Context) {
 		var req = new(CountRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.Count(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/rename-table", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/rename-table", func(ctx *gin.Context) {
 		var req = new(RenameTableRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.RenameTable(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/list-tables", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/list-tables", func(ctx *gin.Context) {
 		var req = new(ListTablesRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.ListTables(ctx, req)
 		xerror.Panic(err)
 		ctx.JSON(200, resp)
 	})
-	r.Handle("POST", "/db-pb/db/drop-table", func(ctx *gin.Context) {
+	r.Handle("POST", "/db/db/drop-table", func(ctx *gin.Context) {
 		var req = new(DropTableRequest)
 		xerror.Panic(ctx.ShouldBindJSON(req))
 		var resp, err = server.DropTable(ctx, req)

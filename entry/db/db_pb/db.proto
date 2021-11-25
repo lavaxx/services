@@ -26,12 +26,54 @@ service Db {
 			body: "*"
 		};
 	}
-	rpc Delete(DeleteRequest) returns (DeleteResponse) {}
-	rpc Truncate(TruncateRequest) returns (TruncateResponse) {}
-	rpc Count(CountRequest) returns (CountResponse) {}
-	rpc RenameTable(RenameTableRequest) returns (RenameTableResponse) {}
-	rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
-	rpc DropTable(DropTableRequest) returns (DropTableResponse) {}
+
+rpc Delete (DeleteRequest) returns (DeleteResponse) {
+  option (google.api.http) = {
+    post: "/db/db/delete"
+    body: "*"
+  };
+}
+
+
+rpc Truncate (TruncateRequest) returns (TruncateResponse) {
+  option (google.api.http) = {
+    post: "/db/db/truncate"
+    body: "*"
+  };
+}
+
+
+rpc Count (CountRequest) returns (CountResponse) {
+  option (google.api.http) = {
+    post: "/db/db/count"
+    body: "*"
+  };
+}
+
+
+rpc RenameTable (RenameTableRequest) returns (RenameTableResponse) {
+  option (google.api.http) = {
+    post: "/db/db/rename-table"
+    body: "*"
+  };
+}
+
+
+rpc ListTables (ListTablesRequest) returns (ListTablesResponse) {
+  option (google.api.http) = {
+    post: "/db/db/list-tables"
+    body: "*"
+  };
+}
+
+
+rpc DropTable (DropTableRequest) returns (DropTableResponse) {
+  option (google.api.http) = {
+    post: "/db/db/drop-table"
+    body: "*"
+  };
+}
+
 }
 
 
@@ -147,4 +189,3 @@ message DropTableRequest {
 
 message DropTableResponse {
 }
-

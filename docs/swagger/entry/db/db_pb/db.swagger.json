@@ -15,8 +15,307 @@
   "produces": [
     "application/json"
   ],
-  "paths": {},
+  "paths": {
+    "/db/db/count": {
+      "post": {
+        "operationId": "Db_Count",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbCountResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbCountRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/create": {
+      "post": {
+        "operationId": "Db_Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbCreateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbCreateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/delete": {
+      "post": {
+        "operationId": "Db_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbDeleteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbDeleteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/drop-table": {
+      "post": {
+        "operationId": "Db_DropTable",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbDropTableResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbDropTableRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/list-tables": {
+      "post": {
+        "operationId": "Db_ListTables",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbListTablesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbListTablesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/read": {
+      "post": {
+        "operationId": "Db_Read",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbReadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbReadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/rename-table": {
+      "post": {
+        "operationId": "Db_RenameTable",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbRenameTableResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbRenameTableRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/truncate": {
+      "post": {
+        "operationId": "Db_Truncate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbTruncateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbTruncateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    },
+    "/db/db/update": {
+      "post": {
+        "operationId": "Db_Update",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/dbUpdateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dbUpdateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Db"
+        ]
+      }
+    }
+  },
   "definitions": {
+    "dbCountRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "title": "specify the table name"
+        }
+      },
+      "title": "Count records in a table"
+    },
     "dbCountResponse": {
       "type": "object",
       "properties": {
@@ -27,6 +326,20 @@
         }
       }
     },
+    "dbCreateRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "title": "Optional table name. Defaults to 'default'"
+        },
+        "record": {
+          "type": "object",
+          "title": "JSON encoded record or records (can be array or object)"
+        }
+      },
+      "description": "Create a record in the database. Optionally include an \"id\" field otherwise it's set automatically."
+    },
     "dbCreateResponse": {
       "type": "object",
       "properties": {
@@ -36,11 +349,38 @@
         }
       }
     },
+    "dbDeleteRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "title": "Optional table name. Defaults to 'default'"
+        },
+        "id": {
+          "type": "string",
+          "title": "id of the record"
+        }
+      },
+      "description": "Delete a record in the database by id."
+    },
     "dbDeleteResponse": {
       "type": "object"
     },
+    "dbDropTableRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string"
+        }
+      },
+      "title": "Drop a table in the DB"
+    },
     "dbDropTableResponse": {
       "type": "object"
+    },
+    "dbListTablesRequest": {
+      "type": "object",
+      "title": "List tables in the DB"
     },
     "dbListTablesResponse": {
       "type": "object",
@@ -54,6 +394,41 @@
         }
       }
     },
+    "dbReadRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "title": "Optional table name. Defaults to 'default'"
+        },
+        "id": {
+          "type": "string",
+          "title": "Read by id. Equivalent to 'id == \"your-id\"'"
+        },
+        "query": {
+          "type": "string",
+          "description": "Examples: 'age \u003e= 18', 'age \u003e= 18 and verified == true'\nComparison operators: '==', '!=', '\u003c', '\u003e', '\u003c=', '\u003e='\nLogical operator: 'and'\nDot access is supported, eg: 'user.age == 11'\nAccessing list elements is not supported yet."
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Maximum number of records to return. Default limit is 25.\nMaximum limit is 1000. Anything higher will return an error."
+        },
+        "orderBy": {
+          "type": "string",
+          "title": "field name to order by"
+        },
+        "order": {
+          "type": "string",
+          "title": "'asc' (default), 'desc'"
+        }
+      },
+      "description": "Read data from a table. Lookup can be by ID or via querying any field in the record."
+    },
     "dbReadResponse": {
       "type": "object",
       "properties": {
@@ -66,11 +441,52 @@
         }
       }
     },
+    "dbRenameTableRequest": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "title": "current table name"
+        },
+        "to": {
+          "type": "string",
+          "title": "new table name"
+        }
+      },
+      "title": "Rename a table"
+    },
     "dbRenameTableResponse": {
       "type": "object"
     },
+    "dbTruncateRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string"
+        }
+      },
+      "title": "Truncate the records in a table"
+    },
     "dbTruncateResponse": {
       "type": "object"
+    },
+    "dbUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "title": "Optional table name. Defaults to 'default'"
+        },
+        "id": {
+          "type": "string",
+          "title": "The id of the record. If not specified it is inferred from the 'id' field of the record"
+        },
+        "record": {
+          "type": "object",
+          "title": "record, JSON object"
+        }
+      },
+      "description": "Update a record in the database. Include an \"id\" in the record to update."
     },
     "dbUpdateResponse": {
       "type": "object"
