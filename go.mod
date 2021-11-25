@@ -3,6 +3,7 @@ module github.com/lavaxx/services
 go 1.17
 
 require (
+	github.com/DarthSim/hivemind v1.0.6
 	github.com/crufter/lexer v0.0.0-20120907053443-23fe8c7add01
 	github.com/gin-gonic/gin v1.7.2
 	github.com/golang/protobuf v1.5.2
@@ -136,6 +137,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.12 // indirect
 	github.com/mattn/go-sqlite3 v1.14.9 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
+	github.com/mattn/goreman v0.3.8 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/micro/micro/v3 v3.7.1-0.20211111170433-1ebb8328e280 // indirect
@@ -218,6 +220,7 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/sqlite v1.2.3 // indirect
