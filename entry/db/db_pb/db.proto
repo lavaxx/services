@@ -1,14 +1,31 @@
 syntax = "proto3";
-import "google/protobuf/struct.proto";
 
 package db;
+
+import "google/protobuf/struct.proto";
+import "google/api/annotations.proto";
 
 option go_package = "./;db_pb";
 
 service Db {
-	rpc Create(CreateRequest) returns (CreateResponse) {}
-	rpc Read(ReadRequest) returns (ReadResponse) {}
-	rpc Update(UpdateRequest) returns (UpdateResponse) {}
+	rpc Create(CreateRequest) returns (CreateResponse) {
+		option (google.api.http) = {
+			post: "/db/db/create"
+			body: "*"
+		};
+	}
+	rpc Read(ReadRequest) returns (ReadResponse) {
+		option (google.api.http) = {
+			post: "/db/db/read"
+			body: "*"
+		};
+	}
+	rpc Update(UpdateRequest) returns (UpdateResponse) {
+		option (google.api.http) = {
+			post: "/db/db/update"
+			body: "*"
+		};
+	}
 	rpc Delete(DeleteRequest) returns (DeleteResponse) {}
 	rpc Truncate(TruncateRequest) returns (TruncateResponse) {}
 	rpc Count(CountRequest) returns (CountResponse) {}
